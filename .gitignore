@@ -1,0 +1,84 @@
+############################
+# UNITY
+############################
+
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+UserSettings/
+MemoryCaptures/
+
+# Asset meta temp
+*.csproj
+*.unityproj
+*.sln
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity cache
+.DS_Store
+.idea/
+.vscode/
+
+############################
+# NODE / TYPESCRIPT SERVER
+############################
+
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+############################
+# TYPESCRIPT
+############################
+
+*.tsbuildinfo
+
+############################
+# VISUAL STUDIO / RIDER
+############################
+
+.vs/
+*.suo
+*.tmp
+*.user
+*.userosscache
+*.sln.docstates
+
+############################
+# OS FILES
+############################
+
+Thumbs.db
+.DS_Store
+
+############################
+# UNITY GENERATED FILES
+############################
+
+# Crash reports
+sysinfo.txt
+
+############################
+# SERVER LOGS
+############################
+
+logs/
+*.log
