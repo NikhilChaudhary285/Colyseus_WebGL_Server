@@ -38,39 +38,28 @@ export class MyRoom extends Room {
     // ===== MOVEMENT =====
     this.onMessage("move", (client, data) => {
       const p = this.state.players.get(client.sessionId);
-      if (!p) {
-        this.log("[WARN] move: player not found", client.sessionId);
-        return;
-      }
+      if (!p) return;
 
       const changed =
-        p.x !== data.x || p.y !== data.y || p.z !== data.z ||
-        p.rotY !== data.rotY || p.anim !== data.anim;
+        Math.abs(p.x - data.x) > 0.001 ||
+        Math.abs(p.y - data.y) > 0.001 ||
+        Math.abs(p.z - data.z) > 0.001 ||
+        Math.abs(p.rotY - data.rotY) > 0.1 ||
+        p.anim !== data.anim;
 
-      if (!changed) {
-        // nothing to update, skip patch and logging entirely
-        return;
-      }
+      if (!changed) return;
 
-      // throttle the log so we don't spam the console
-      const now = Date.now();
-      const last = this.lastMoveLog.get(client.sessionId) || 0;
-      if (now - last > 500) {
-        this.log("[RECV] move from", client.sessionId, data);
-        this.lastMoveLog.set(client.sessionId, now);
-      }
+      this.log("[RECV] move from", client.sessionId, data);
 
       p.x = data.x;
       p.y = data.y;
       p.z = data.z;
       p.rotY = data.rotY;
 
-      // Only change walk/idle if NOT in special state
+      // 🔥 ALWAYS update anim unless jumping/sitting override
       if (!p.jumping && !p.sitting) {
-        p.anim = data.anim === "walk" ? "walk" : "idle";
+        p.anim = data.anim;
       }
-
-      this.log("[STATE] updated position for", client.sessionId);
     });
 
 
@@ -92,7 +81,7 @@ export class MyRoom extends Room {
         if (!player) return;
 
         player.jumping = false;
-        //player.anim = "idle";
+        player.anim = "idle";
         this.log("[STATE] jump finished for", client.sessionId);
       }, 700);   // slightly longer so clients see it
     });
@@ -149,7 +138,6 @@ export class MyRoom extends Room {
         this.log("[WARN] setName: player not found", client.sessionId);
       }
     });
-
 
     // ===== START GAME =====
     this.onMessage("startGame", (client) => {
