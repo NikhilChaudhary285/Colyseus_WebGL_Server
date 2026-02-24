@@ -7,6 +7,13 @@ export class MyRoom extends Room {
   state = new GameState();
   joinCounter = 0;
 
+  // maps used for throttled logging
+  private lastMoveLog = new Map<string, number>();
+  private debugEnabled = true;   // flip to false to silence all logs
+
+  // helper function assigned in onCreate
+  private log!: (...args: any[]) => void;  // non-null assertion: set in constructor
+
   spawnPoints = [
     { x: -1, y: 0, z: -1 },
     { x: 1, y: 0, z: -1 },
@@ -15,20 +22,48 @@ export class MyRoom extends Room {
   ];
 
   onCreate() {
+    // helper for consistent debug output
+    this.log = (...args: any[]) => {
+      if (this.debugEnabled) console.log(...args);
+    };
 
-    console.log("Room created:", this.roomId);
+    this.log("Room created:", this.roomId);
 
     // 🔥 IMPORTANT: smooth network updates
     this.patchRate = 60;              // send 60 updates/sec
     this.setSimulationInterval(() => {  // keep room alive
       // nothing needed here yet, but keeps state ticking
     }, 1000 / 60);
-
+    
+    // (this as any).onPatch((patches: any) => {
+    //   if (!this.debugEnabled) return;
+    //   console.log("[PATCH]", JSON.stringify(patches));
+    // });
 
     // ===== MOVEMENT =====
     this.onMessage("move", (client, data) => {
       const p = this.state.players.get(client.sessionId);
-      if (!p) return;
+      if (!p) {
+        this.log("[WARN] move: player not found", client.sessionId);
+        return;
+      }
+
+      const changed =
+        p.x !== data.x || p.y !== data.y || p.z !== data.z ||
+        p.rotY !== data.rotY || p.anim !== data.anim;
+
+      if (!changed) {
+        // nothing to update, skip patch and logging entirely
+        return;
+      }
+
+      // throttle the log so we don't spam the console
+      const now = Date.now();
+      const last = this.lastMoveLog.get(client.sessionId) || 0;
+      if (now - last > 500) {
+        this.log("[RECV] move from", client.sessionId, data);
+        this.lastMoveLog.set(client.sessionId, now);
+      }
 
       p.x = data.x;
       p.y = data.y;
@@ -39,14 +74,20 @@ export class MyRoom extends Room {
       if (!p.jumping && !p.sitting) {
         p.anim = data.anim === "walk" ? "walk" : "idle";
       }
+
+      this.log("[STATE] updated position for", client.sessionId);
     });
 
 
     // ===== JUMP =====
     this.onMessage("jump", (client) => {
+      this.log("[RECV] jump from", client.sessionId);
 
       const p = this.state.players.get(client.sessionId);
-      if (!p || p.jumping) return;
+      if (!p || p.jumping) {
+        this.log("[WARN] jump ignored for", client.sessionId);
+        return;
+      }
 
       p.jumping = true;
       p.anim = "jump";
@@ -57,64 +98,101 @@ export class MyRoom extends Room {
 
         player.jumping = false;
         player.anim = "idle";
+        this.log("[STATE] jump finished for", client.sessionId);
       }, 700);   // slightly longer so clients see it
     });
 
     // ===== SIT =====
     this.onMessage("sit", (client, sit) => {
+      this.log("[RECV] sit from", client.sessionId, sit);
       const p = this.state.players.get(client.sessionId);
-      if (!p) return;
+      if (!p) {
+        this.log("[WARN] sit: player not found", client.sessionId);
+        return;
+      }
 
       p.sitting = sit;
       if (sit) p.anim = "idle";
+      this.log("[STATE] sitting state updated for", client.sessionId, sit);
     });
 
 
     // ===== SKIN =====
     this.onMessage("skin", (client, id) => {
+      this.log("[RECV] skin change from", client.sessionId, id);
       const p = this.state.players.get(client.sessionId);
-      if (p) p.skin = id;
+      if (p) {
+        p.skin = id;
+        this.log("[STATE] skin set for", client.sessionId, id);
+      } else {
+        this.log("[WARN] skin: player not found", client.sessionId);
+      }
     });
 
 
     // ===== READY =====
     this.onMessage("ready", (client, value) => {
+      this.log("[RECV] ready from", client.sessionId, value);
       const p = this.state.players.get(client.sessionId);
-      if (p) p.ready = value;
+      if (p) {
+        p.ready = value;
+        this.log("[STATE] ready flag updated for", client.sessionId, value);
+      } else {
+        this.log("[WARN] ready: player not found", client.sessionId);
+      }
     });
 
 
     // ===== NAME =====
     this.onMessage("setName", (client, name) => {
+      this.log("[RECV] setName from", client.sessionId, name);
       const p = this.state.players.get(client.sessionId);
-      if (p) p.name = name || "Player";
+      if (p) {
+        p.name = name || "Player";
+        this.log("[STATE] name set for", client.sessionId, p.name);
+      } else {
+        this.log("[WARN] setName: player not found", client.sessionId);
+      }
     });
 
 
     // ===== START GAME =====
     this.onMessage("startGame", (client) => {
+      this.log("[RECV] startGame from", client.sessionId);
 
-      if (client.sessionId !== this.state.hostSessionId) return;
+      if (client.sessionId !== this.state.hostSessionId) {
+        this.log("[WARN] startGame ignored; not host", client.sessionId);
+        return;
+      }
 
       let allReady = true;
       this.state.players.forEach(p => {
         if (!p.ready) allReady = false;
       });
 
-      if (allReady) this.startCountdown();
+      if (allReady) {
+        this.log("[INFO] all players ready, starting countdown");
+        this.startCountdown();
+      } else {
+        this.log("[INFO] startGame received but not all players ready");
+      }
     });
   }
 
 
   startCountdown() {
+    // (helper defined above)
 
+    this.log("[SEND] countdown starting at 3");
     this.state.countdown = 3;
 
     const timer = this.clock.setInterval(() => {
 
       this.state.countdown--;
+      this.log("[SEND] countdown tick", this.state.countdown);
 
       if (this.state.countdown <= 0) {
+        this.log("[SEND] countdown finished, starting match");
         timer.clear();
         this.startMatch();
       }
@@ -125,18 +203,21 @@ export class MyRoom extends Room {
 
   startMatch() {
 
+    this.log("[SEND] assigning spawn indices");
     let index = 0;
 
     this.state.players.forEach(p => {
       p.spawnIndex = index++;
+      this.log("  spawnIndex", p.spawnIndex);
     });
 
     this.state.matchStarted = true;
-    console.log("MATCH STARTED");
+    this.log("MATCH STARTED");
   }
 
 
   onJoin(client: Client) {
+    this.log("[EVENT] client joined", client.sessionId);
 
     const player = new Player();
 
@@ -153,14 +234,17 @@ export class MyRoom extends Room {
 
     this.state.players.set(client.sessionId, player);
 
-    if (!this.state.hostSessionId)
+    if (!this.state.hostSessionId) {
       this.state.hostSessionId = client.sessionId;
+      this.log("[INFO] assigned new host", client.sessionId);
+    }
 
-    console.log("Player joined:", client.sessionId);
+    this.log("Player joined:", client.sessionId);
   }
 
 
   onLeave(client: Client) {
+    this.log("[EVENT] client left", client.sessionId);
     this.state.players.delete(client.sessionId);
   }
 }
