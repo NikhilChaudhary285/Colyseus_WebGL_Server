@@ -27,7 +27,6 @@ export class MyRoom extends Room {
 
     // ===== MOVEMENT =====
     this.onMessage("move", (client, data) => {
-
       const p = this.state.players.get(client.sessionId);
       if (!p) return;
 
@@ -36,8 +35,10 @@ export class MyRoom extends Room {
       p.z = data.z;
       p.rotY = data.rotY;
 
-      if (!p.sitting && !p.jumping)
-        p.anim = data.anim ?? "idle";
+      // Only change walk/idle if NOT in special state
+      if (!p.jumping && !p.sitting) {
+        p.anim = data.anim === "walk" ? "walk" : "idle";
+      }
     });
 
 
@@ -56,9 +57,8 @@ export class MyRoom extends Room {
 
         player.jumping = false;
         player.anim = "idle";
-      }, 300);   // slightly longer so clients see it
+      }, 700);   // slightly longer so clients see it
     });
-
 
     // ===== SIT =====
     this.onMessage("sit", (client, sit) => {
