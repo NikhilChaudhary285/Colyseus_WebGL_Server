@@ -34,11 +34,6 @@ export class MyRoom extends Room {
     this.setSimulationInterval(() => {  // keep room alive
       // nothing needed here yet, but keeps state ticking
     }, 1000 / 60);
-    
-    // (this as any).onPatch((patches: any) => {
-    //   if (!this.debugEnabled) return;
-    //   console.log("[PATCH]", JSON.stringify(patches));
-    // });
 
     // ===== MOVEMENT =====
     this.onMessage("move", (client, data) => {
@@ -97,7 +92,7 @@ export class MyRoom extends Room {
         if (!player) return;
 
         player.jumping = false;
-        player.anim = "idle";
+        //player.anim = "idle";
         this.log("[STATE] jump finished for", client.sessionId);
       }, 700);   // slightly longer so clients see it
     });
