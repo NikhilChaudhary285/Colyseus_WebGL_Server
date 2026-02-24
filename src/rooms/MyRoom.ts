@@ -19,7 +19,7 @@ export class MyRoom extends Room {
     console.log("Room created:", this.roomId);
 
     // 🔥 IMPORTANT: smooth network updates
-    this.setPatchRate(60);              // send 60 updates/sec
+    this.patchRate = 60;              // send 60 updates/sec
     this.setSimulationInterval(() => {  // keep room alive
       // nothing needed here yet, but keeps state ticking
     }, 1000 / 60);
