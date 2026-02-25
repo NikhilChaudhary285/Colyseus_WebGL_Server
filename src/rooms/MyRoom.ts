@@ -29,7 +29,7 @@ export class MyRoom extends Room {
 
     this.log("Room created:", this.roomId);
 
-    // 🔥 IMPORTANT: smooth network updates
+    // IMPORTANT: smooth network updates
     this.patchRate = 60;              // send 60 updates/sec
     this.setSimulationInterval(() => {  // keep room alive
       // nothing needed here yet, but keeps state ticking
