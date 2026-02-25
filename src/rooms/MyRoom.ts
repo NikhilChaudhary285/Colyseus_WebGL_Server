@@ -40,6 +40,12 @@ export class MyRoom extends Room {
       const p = this.state.players.get(client.sessionId);
       if (!p) return;
 
+      // NEW: Ignore empty/invalid data
+      if (!data || data.x === undefined || data.y === undefined || data.z === undefined || data.rotY === undefined || data.anim === undefined) {
+        this.log("[WARN] Ignored invalid/empty move from", client.sessionId, data);
+        return;
+      }
+
       const changed =
         Math.abs(p.x - data.x) > 0.001 ||
         Math.abs(p.y - data.y) > 0.001 ||
@@ -96,7 +102,7 @@ export class MyRoom extends Room {
       }
 
       p.sitting = sit;
-      if (sit) p.anim = "idle";
+      p.anim = sit ? "sit" : "idle";  // NEW: Use "sit" anim to match client
       this.log("[STATE] sitting state updated for", client.sessionId, sit);
     });
 
