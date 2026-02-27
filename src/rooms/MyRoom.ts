@@ -166,6 +166,11 @@ export class MyRoom extends Room {
         this.log("[INFO] startGame received but not all players ready");
       }
     });
+
+    // ===== PING (keep-alive) =====
+    this.onMessage("ping", (client) => {
+      this.log("[INFO] ping received from", client.sessionId);
+    });
   }
 
 
